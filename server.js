@@ -62,7 +62,6 @@ const QQ_COOKIE_FILE = process.env.QQ_COOKIE_FILE || path.join(__dirname, '.qq-c
 const UPDATE_WORK_DIR = process.env.MINERADIO_UPDATE_DIR || path.join(__dirname, 'updates');
 const UPDATE_DOWNLOAD_DIR = process.env.MINERADIO_UPDATE_DOWNLOAD_DIR || path.join(UPDATE_WORK_DIR, 'downloads');
 const UPDATE_PATCH_BACKUP_DIR = process.env.MINERADIO_PATCH_BACKUP_DIR || path.join(UPDATE_WORK_DIR, 'backups', 'patches');
-const BEATMAP_CACHE_DIR = process.env.MINERADIO_BEAT_CACHE_DIR || 'D:\\MineradioCache\\beatmaps';
 const APP_PACKAGE = readPackageInfo();
 const APP_VERSION = process.env.MINERADIO_VERSION || APP_PACKAGE.version || '0.9.11';
 const UPDATE_CONFIG = readUpdateConfig(APP_PACKAGE);
@@ -84,6 +83,17 @@ const WEATHER_DEFAULT_LOCATION = {
   longitude: 121.4737,
   timezone: 'Asia/Shanghai',
 };
+
+function defaultBeatMapCacheDir() {
+  if (process.platform === 'win32') return 'D:\\MineradioCache\\beatmaps';
+  const home = process.env.HOME || process.env.USERPROFILE || __dirname;
+  if (process.platform === 'darwin') {
+    return path.join(home, 'Library', 'Application Support', 'Mineradio', 'beatmaps');
+  }
+  return path.join(home, '.config', 'Mineradio', 'beatmaps');
+}
+
+const BEATMAP_CACHE_DIR = process.env.MINERADIO_BEAT_CACHE_DIR || defaultBeatMapCacheDir();
 
 const updateDownloadJobs = new Map();
 
@@ -362,10 +372,37 @@ function extractReleaseNotes(body) {
   });
   return notes.slice(0, 4);
 }
+function releaseAssetPlatformScore(asset) {
+  const name = String(asset && asset.name || '').toLowerCase();
+  if (!name) return 0;
+  if (process.platform === 'darwin') {
+    if (/\.(dmg|pkg)$/i.test(name)) return 100;
+    if (/mac|darwin|osx/.test(name) && /\.zip$/i.test(name)) return 90;
+    if (/mac|darwin|osx/.test(name)) return 80;
+    if (/arm64|x64|universal/.test(name) && /\.zip$/i.test(name)) return 60;
+    if (/\.zip$/i.test(name) && !/\b(win|windows|setup|installer)\b|\.exe|\.msi/i.test(name)) return 40;
+    return 0;
+  }
+  if (process.platform === 'win32') {
+    if (/\.(exe|msi)$/i.test(name)) return 100;
+    if (/win|windows/.test(name) && /\.(zip|7z)$/i.test(name)) return 70;
+    if (/\.(zip|7z)$/i.test(name) && !/\b(mac|darwin|osx)\b|\.dmg|\.pkg/i.test(name)) return 35;
+    return 0;
+  }
+  if (/\.(appimage|deb|rpm)$/i.test(name)) return 100;
+  if (/linux/.test(name) && /\.(tar\.gz|zip|7z)$/i.test(name)) return 70;
+  if (/\.(zip|7z|tar\.gz)$/i.test(name) && !/\b(win|windows|mac|darwin|osx)\b|\.exe|\.msi|\.dmg|\.pkg/i.test(name)) return 35;
+  return 0;
+}
 function pickReleaseAsset(assets) {
   const list = Array.isArray(assets) ? assets : [];
-  const preferred = list.find(a => /\.(exe|msi)$/i.test(a && a.name || ''))
-    || list.find(a => /\.(zip|7z)$/i.test(a && a.name || ''))
+  const scored = list
+    .map(asset => ({ asset, score: releaseAssetPlatformScore(asset) }))
+    .filter(item => item.score > 0)
+    .sort((a, b) => b.score - a.score);
+  const preferred = (scored[0] && scored[0].asset)
+    || list.find(a => /\.(exe|msi|dmg|pkg)$/i.test(a && a.name || ''))
+    || list.find(a => /\.(zip|7z|tar\.gz)$/i.test(a && a.name || ''))
     || list[0];
   if (!preferred) return null;
   const digest = assetDigestInfo(preferred);
@@ -453,7 +490,7 @@ function normalizeManifestUpdateInfo(data) {
     ? release.notes.slice(0, 4).map(cleanReleaseLine).filter(Boolean)
     : (extractReleaseNotes(release.body || data.body).length ? extractReleaseNotes(release.body || data.body) : UPDATE_FALLBACK_NOTES);
   const assetInfo = downloadUrl ? {
-    name: asset.name || updateAssetNameFromUrl(downloadUrl) || `Mineradio-${latestVersion}-Setup.exe`,
+    name: asset.name || updateAssetNameFromUrl(downloadUrl) || updateFallbackAssetName(latestVersion),
     size: Number(asset.size || 0) || 0,
     contentType: asset.contentType || asset.content_type || '',
     downloadUrl,
@@ -665,9 +702,15 @@ function githubReleaseDownloadUrl(version, fileName) {
   const encodedName = String(fileName || '').split('/').map(part => encodeURIComponent(part)).join('/');
   return `https://github.com/${encodedOwner}/${encodedRepo}/releases/download/${tag}/${encodedName}`;
 }
+function updateFallbackAssetName(version) {
+  const v = version || APP_VERSION;
+  if (process.platform === 'darwin') return `Mineradio-${v}-arm64.dmg`;
+  if (process.platform === 'win32') return `Mineradio-${v}-Setup.exe`;
+  return `Mineradio-${v}.zip`;
+}
 function parseLatestYmlUpdateInfo(text, reason) {
   const latestVersion = normalizeVersion(yamlScalar(text, 'version') || APP_VERSION) || APP_VERSION;
-  const assetPath = yamlScalar(text, 'path') || yamlScalar(text, 'url') || `Mineradio-${latestVersion}-Setup.exe`;
+  const assetPath = yamlScalar(text, 'path') || yamlScalar(text, 'url') || updateFallbackAssetName(latestVersion);
   const sha512 = normalizeDigest(yamlScalar(text, 'sha512'), 'sha512');
   const size = Number(yamlScalar(text, 'size') || 0) || 0;
   const releaseDate = yamlScalar(text, 'releaseDate');
@@ -707,7 +750,8 @@ function parseLatestYmlUpdateInfo(text, reason) {
 }
 async function fetchLatestYmlUpdateInfo(reason) {
   if (!UPDATE_CONFIG.configured || UPDATE_CONFIG.provider !== 'github') throw updateError('UPDATE_REPOSITORY_NOT_CONFIGURED');
-  const latestYmlUrl = `https://github.com/${encodeURIComponent(UPDATE_CONFIG.owner)}/${encodeURIComponent(UPDATE_CONFIG.repo)}/releases/latest/download/latest.yml`;
+  const latestFileName = process.platform === 'darwin' ? 'latest-mac.yml' : 'latest.yml';
+  const latestYmlUrl = `https://github.com/${encodeURIComponent(UPDATE_CONFIG.owner)}/${encodeURIComponent(UPDATE_CONFIG.repo)}/releases/latest/download/${latestFileName}`;
   const candidates = uniqueDownloadCandidates(latestYmlUrl);
   const result = await fetchTextFromCandidates(candidates, 6500);
   return parseLatestYmlUpdateInfo(result.text, reason);
@@ -764,13 +808,13 @@ async function fetchLatestUpdateInfo() {
   }
 }
 function safeUpdateFileName(name, version) {
-  const raw = String(name || '').trim() || `Mineradio-${version || APP_VERSION}.exe`;
+  const raw = String(name || '').trim() || updateFallbackAssetName(version || APP_VERSION);
   const cleaned = raw
     .replace(/[<>:"/\\|?*\x00-\x1F]/g, '-')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 160);
-  return cleaned || `Mineradio-${version || APP_VERSION}.exe`;
+  return cleaned || updateFallbackAssetName(version || APP_VERSION);
 }
 function publicUpdateJob(job) {
   if (!job) return { ok: false, error: 'UPDATE_JOB_NOT_FOUND' };
@@ -936,7 +980,7 @@ function reuseVerifiedInstallerJob(opts) {
     attempt: 0,
     attempts: opts.attempts || 0,
     mode: 'installer',
-    message: '安装包已下载，可直接打开安装',
+    message: '更新包已下载，可直接打开安装',
     fileName: opts.fileName || path.basename(opts.filePath),
     filePath: opts.filePath,
     version: opts.version || '',
@@ -1002,7 +1046,7 @@ async function downloadUpdateAssetWithMirrors(job) {
       try { if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath); } catch (_) {}
       ensureMirrorCanBeVerified(job, candidate);
       prepareUpdateJobAttempt(job, candidate, i, candidates.length);
-      job.message = job.total ? '正在下载完整安装包' : '正在下载完整安装包，等待服务器返回大小';
+      job.message = job.total ? '正在下载完整更新包' : '正在下载完整更新包，等待服务器返回大小';
 
       const resp = await fetchWithTimeout(candidate.url, {
         headers: { 'User-Agent': `Mineradio/${APP_VERSION}` },
@@ -1038,7 +1082,7 @@ async function downloadUpdateAssetWithMirrors(job) {
             const kb = Math.max(1, job.received / 1024);
             job.progress = Math.max(1, Math.min(88, Math.round(Math.log10(kb + 1) * 24)));
           }
-          job.message = job.total > 0 ? '正在下载完整安装包' : '正在下载完整安装包，服务器未提供总大小';
+          job.message = job.total > 0 ? '正在下载完整更新包' : '正在下载完整更新包，服务器未提供总大小';
           job.updatedAt = Date.now();
           if (!writer.write(buf)) await once(writer, 'drain');
         }
@@ -1053,7 +1097,7 @@ async function downloadUpdateAssetWithMirrors(job) {
       job.status = 'ready';
       job.progress = 100;
       job.etaSeconds = 0;
-      job.message = '安装包已下载';
+      job.message = '更新包已下载';
       job.updatedAt = Date.now();
       return;
     } catch (err) {

@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { execFileSync } = require('child_process');
+const { execFileSync, spawnSync } = require('child_process');
 
 function findNewestRceditInCache(cacheRoot) {
   if (!cacheRoot || !fs.existsSync(cacheRoot)) return null;
@@ -40,6 +40,13 @@ function resolveRcedit(projectDir) {
   return hit;
 }
 
+function executableExists(name) {
+  var result = spawnSync(process.platform === 'win32' ? 'where' : 'which', [name], {
+    stdio: 'ignore',
+  });
+  return result.status === 0;
+}
+
 module.exports = async function afterPack(context) {
   if (context.electronPlatformName !== 'win32') return;
 
@@ -50,6 +57,11 @@ module.exports = async function afterPack(context) {
 
   if (!fs.existsSync(exePath)) throw new Error(`Mineradio executable was not found: ${exePath}`);
   if (!fs.existsSync(iconPath)) throw new Error(`Mineradio icon was not found: ${iconPath}`);
+
+  if (process.platform !== 'win32' && !executableExists('wine') && !executableExists('wine64')) {
+    console.log('  • skipping Mineradio Windows resource injection (wine is not available on this host)');
+    return;
+  }
 
   const version = context.packager.appInfo.version;
   console.log(`  • injecting Mineradio resources  rcedit=${rceditPath}`);
