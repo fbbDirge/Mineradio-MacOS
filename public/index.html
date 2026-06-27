@@ -40,14 +40,29 @@ body.desktop-shell #desktop-window-shell{display:block;position:fixed;inset:0;ov
 body.desktop-shell.desktop-maximized #desktop-window-shell,body.desktop-shell.desktop-fullscreen #desktop-window-shell,html:fullscreen body.desktop-shell #desktop-window-shell{border-radius:0!important;clip-path:none!important;box-shadow:none!important}
 body.desktop-shell #desktop-titlebar{position:fixed;z-index:500;top:0;left:0;right:0;height:44px;padding:0 12px 0 18px;display:flex;align-items:center;justify-content:space-between;background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none;-webkit-app-region:drag;pointer-events:none}
 body.desktop-shell #desktop-titlebar::after{content:none}
-.desktop-drag-region{height:100%;flex:1;display:flex;align-items:center;gap:9px;min-width:0;color:rgba(224,250,255,.74);font-size:12px;font-weight:600;letter-spacing:0;text-transform:uppercase;-webkit-app-region:drag;pointer-events:auto}
+.desktop-drag-region{order:1;height:100%;flex:1;display:flex;align-items:center;gap:9px;min-width:0;color:rgba(224,250,255,.74);font-size:12px;font-weight:600;letter-spacing:0;text-transform:uppercase;-webkit-app-region:drag;pointer-events:auto}
 .desktop-app-mark{display:none}
 .desktop-app-title{display:none}
-.desktop-window-controls{display:flex;align-items:center;gap:6px;padding:0;border-radius:0;background:transparent;box-shadow:none;-webkit-app-region:no-drag;pointer-events:auto}
+.desktop-titlebar-tools,.desktop-window-controls{display:flex;align-items:center;gap:6px;padding:0;border-radius:0;background:transparent;box-shadow:none;-webkit-app-region:no-drag;pointer-events:auto}
+.desktop-titlebar-tools{order:2}
+.desktop-window-controls{order:3}
 .desktop-window-btn{width:38px;height:30px;border:0;border-radius:10px;background:rgba(4,8,10,.42);color:rgba(224,250,255,.72);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .18s,color .18s,transform .18s}
 .desktop-window-btn svg{width:14px;height:14px;stroke:currentColor;stroke-width:2;fill:none}
 .desktop-window-btn:hover{background:rgba(244,210,138,.14);color:#fff1bd;transform:translateY(-1px)}
 .desktop-window-btn.close:hover{background:rgba(255,86,100,.86);color:#fff}
+.desktop-platform-darwin #desktop-titlebar{padding:0 14px 0 16px}
+.desktop-platform-darwin .desktop-drag-region{order:2}
+.desktop-platform-darwin .desktop-titlebar-tools{order:3}
+.desktop-platform-darwin .desktop-window-controls{order:1;gap:8px;margin-right:14px;height:100%}
+.desktop-platform-darwin .desktop-window-btn{width:12px;height:12px;border-radius:50%;padding:0;border:0;color:rgba(0,0,0,.64);box-shadow:0 0 0 1px rgba(0,0,0,.18),inset 0 1px 1px rgba(255,255,255,.28);transform:none;overflow:hidden}
+.desktop-platform-darwin .desktop-window-btn svg{width:8px;height:8px;opacity:0;stroke-width:2.4;transition:opacity .12s}
+.desktop-platform-darwin .desktop-window-controls:hover .desktop-window-btn svg{opacity:.76}
+.desktop-platform-darwin .desktop-window-btn.close{background:#ff5f57}
+.desktop-platform-darwin .desktop-window-btn[data-window-action="minimize"]{background:#ffbd2e}
+.desktop-platform-darwin .desktop-window-btn[data-window-action="maximize"]{background:#28c840}
+.desktop-platform-darwin .desktop-window-btn:hover{transform:none;filter:brightness(1.08)}
+.desktop-platform-darwin .desktop-window-btn:active{filter:brightness(.88)}
+.desktop-platform-darwin .desktop-window-btn.close:hover{background:#ff5f57;color:rgba(0,0,0,.68)}
 .desktop-mode-btn{height:30px;min-width:78px;padding:0 12px;border:1px solid rgba(255,255,255,.08);border-radius:999px;background:rgba(4,8,10,.42);color:rgba(224,250,255,.70);font-family:inherit;font-size:11px;font-weight:760;letter-spacing:.08em;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:background .18s,color .18s,transform .18s,border-color .18s,box-shadow .18s}
 .desktop-mode-btn::before{content:'';width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.28);box-shadow:0 0 0 rgba(255,83,103,0);transition:background .18s,box-shadow .18s}
 .desktop-mode-btn:hover{background:rgba(255,83,103,.10);border-color:rgba(255,83,103,.34);color:#fff;transform:translateY(-1px)}
@@ -1845,11 +1860,23 @@ html.control-glass-svg-ok #visual-guide-btn:hover{
 <body>
 <div id="desktop-window-shell">
 <div id="desktop-titlebar" aria-label="window controls">
+  <div class="desktop-window-controls">
+    <button class="desktop-window-btn close" data-window-action="close" title="关闭" aria-label="关闭">
+      <svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+    </button>
+    <button class="desktop-window-btn" data-window-action="minimize" title="最小化" aria-label="最小化">
+      <svg viewBox="0 0 16 16"><path d="M3 8h10"/></svg>
+    </button>
+    <button class="desktop-window-btn" data-window-action="maximize" title="全屏" aria-label="全屏">
+      <svg class="icon-maximize" viewBox="0 0 16 16"><rect x="4" y="4" width="8" height="8" rx="1.5"/></svg>
+      <svg class="icon-restore" viewBox="0 0 16 16" style="display:none"><path d="M5 3.5h7.5v7.5"/><rect x="3.5" y="5.5" width="7" height="7" rx="1.3"/></svg>
+    </button>
+  </div>
   <div class="desktop-drag-region">
     <div class="desktop-app-mark" aria-hidden="true"></div>
     <div class="desktop-app-title" aria-hidden="true"></div>
   </div>
-  <div class="desktop-window-controls">
+  <div class="desktop-titlebar-tools">
     <button id="visual-guide-btn" class="icon-btn" type="button" onclick="startVisualGuide({ manual: true })" title="查看使用引导" aria-label="查看使用引导">?</button>
     <button id="update-entry" class="update-entry" type="button" onclick="openUpdatePanel()" title="发现新版本" aria-label="发现新版本">
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -1860,16 +1887,6 @@ html.control-glass-svg-ok #visual-guide-btn:hover{
       </svg>
     </button>
     <button id="diy-mode-btn" class="desktop-mode-btn" type="button" onclick="toggleDiyMode()" title="开启 DIY 玩家模式" aria-label="开启 DIY 玩家模式" aria-pressed="false">DIY</button>
-    <button class="desktop-window-btn" data-window-action="minimize" title="最小化" aria-label="最小化">
-      <svg viewBox="0 0 16 16"><path d="M3 8h10"/></svg>
-    </button>
-    <button class="desktop-window-btn" data-window-action="maximize" title="全屏" aria-label="全屏">
-      <svg class="icon-maximize" viewBox="0 0 16 16"><rect x="4" y="4" width="8" height="8" rx="1.5"/></svg>
-      <svg class="icon-restore" viewBox="0 0 16 16" style="display:none"><path d="M5 3.5h7.5v7.5"/><rect x="3.5" y="5.5" width="7" height="7" rx="1.3"/></svg>
-    </button>
-    <button class="desktop-window-btn close" data-window-action="close" title="关闭" aria-label="关闭">
-      <svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></svg>
-    </button>
   </div>
 </div>
 <div id="fullscreen-diy-zone" aria-hidden="true">
@@ -26410,6 +26427,9 @@ function toggleFullscreen() {
 
   document.documentElement.classList.add('desktop-shell-root');
   document.body.classList.add('desktop-shell');
+  if (api.platform) document.body.classList.add('desktop-platform-' + api.platform);
+  if (api.isMac) document.body.classList.add('desktop-mac');
+  if (api.isWindows) document.body.classList.add('desktop-windows');
   document.body.classList.remove('desktop-fullscreen');
   desktopFullscreenActive = false;
   syncCursorAutoHideMode();
