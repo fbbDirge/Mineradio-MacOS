@@ -50,19 +50,10 @@ body.desktop-shell #desktop-titlebar::after{content:none}
 .desktop-window-btn svg{width:14px;height:14px;stroke:currentColor;stroke-width:2;fill:none}
 .desktop-window-btn:hover{background:rgba(244,210,138,.14);color:#fff1bd;transform:translateY(-1px)}
 .desktop-window-btn.close:hover{background:rgba(255,86,100,.86);color:#fff}
-.desktop-platform-darwin #desktop-titlebar{padding:0 14px 0 16px}
+.desktop-platform-darwin #desktop-titlebar{padding:0 14px 0 86px}
 .desktop-platform-darwin .desktop-drag-region{order:2}
 .desktop-platform-darwin .desktop-titlebar-tools{order:3}
-.desktop-platform-darwin .desktop-window-controls{order:1;gap:8px;margin-right:14px;height:100%}
-.desktop-platform-darwin .desktop-window-btn{width:12px;height:12px;border-radius:50%;padding:0;border:0;color:rgba(0,0,0,.64);box-shadow:0 0 0 1px rgba(0,0,0,.18),inset 0 1px 1px rgba(255,255,255,.28);transform:none;overflow:hidden}
-.desktop-platform-darwin .desktop-window-btn svg{width:8px;height:8px;opacity:0;stroke-width:2.4;transition:opacity .12s}
-.desktop-platform-darwin .desktop-window-controls:hover .desktop-window-btn svg{opacity:.76}
-.desktop-platform-darwin .desktop-window-btn.close{background:#ff5f57}
-.desktop-platform-darwin .desktop-window-btn[data-window-action="minimize"]{background:#ffbd2e}
-.desktop-platform-darwin .desktop-window-btn[data-window-action="maximize"]{background:#28c840}
-.desktop-platform-darwin .desktop-window-btn:hover{transform:none;filter:brightness(1.08)}
-.desktop-platform-darwin .desktop-window-btn:active{filter:brightness(.88)}
-.desktop-platform-darwin .desktop-window-btn.close:hover{background:#ff5f57;color:rgba(0,0,0,.68)}
+.desktop-platform-darwin .desktop-window-controls{display:none}
 .desktop-mode-btn{height:30px;min-width:78px;padding:0 12px;border:1px solid rgba(255,255,255,.08);border-radius:999px;background:rgba(4,8,10,.42);color:rgba(224,250,255,.70);font-family:inherit;font-size:11px;font-weight:760;letter-spacing:.08em;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:background .18s,color .18s,transform .18s,border-color .18s,box-shadow .18s}
 .desktop-mode-btn::before{content:'';width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.28);box-shadow:0 0 0 rgba(255,83,103,0);transition:background .18s,box-shadow .18s}
 .desktop-mode-btn:hover{background:rgba(255,83,103,.10);border-color:rgba(255,83,103,.34);color:#fff;transform:translateY(-1px)}
